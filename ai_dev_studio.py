@@ -16,7 +16,11 @@ OPENROUTER_API_URL    = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 OPENROUTER_AUTH_URL   = "https://openrouter.ai/api/v1/auth/key"
 ANTHROPIC_BASE_URL    = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_API_KEY    = st.secrets["or_api_key"]
+
+api_key_secrectpass = st.secrets["or_api_key"]
+os.environ["API_KEY"] = api_key_secrectpass
+
+OPENROUTER_API_KEY    = api_key_secrectpass
 # Default preferred models (overridden by live fetch + user selection)
 DEFAULT_AGENT_MODELS = {
     "BA Agent":        "qwen/qwen3-235b-a22b:free",
@@ -440,7 +444,7 @@ with st.sidebar:
 
     # ── API KEY ──
     # st.markdown("#### 🔑 OpenRouter API Key")
-    api_key = st.secrets["or_api_key"]
+    api_key = api_key_secrectpass
     # st.text_input(
     #     "API Key", type="password",
     #     placeholder="sk-or-v1-...",
