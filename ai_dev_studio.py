@@ -441,12 +441,12 @@ with st.sidebar:
 
     # ── API KEY ──
     # st.markdown("#### 🔑 OpenRouter API Key")
-    api_key = "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"
+    api_key = st.secrets["or_api_key"]
     # st.text_input(
     #     "API Key", type="password",
     #     placeholder="sk-or-v1-...",
     #     label_visibility="collapsed",
-    #     key="api_key_input", value="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"
+    #     key="api_key_input", value=""
     # )
 
     c1, c2 = st.columns(2)
