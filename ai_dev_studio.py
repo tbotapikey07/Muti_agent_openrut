@@ -15,6 +15,8 @@ from datetime import datetime
 OPENROUTER_API_URL    = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 OPENROUTER_AUTH_URL   = "https://openrouter.ai/api/v1/auth/key"
+ANTHROPIC_BASE_URL    = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_API_KEY    = "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"
 
 # Default preferred models (overridden by live fetch + user selection)
 DEFAULT_AGENT_MODELS = {
@@ -328,7 +330,6 @@ def validate_api_key(api_key: str):
     except Exception as e:
         return False, {"error": str(e)}
 
-
 def fetch_free_models(api_key: str):
     try:
         r = requests.get(
@@ -353,33 +354,51 @@ def fetch_free_models(api_key: str):
     except Exception:
         return []
 
+def fetch_available_models(api_key: str):
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    try:
+        response = requests.get(OPENROUTER_MODELS_URL, headers=headers)
+        response.raise_for_status()
+        return response.json()  # Return the list of models
+    except Exception as e:
+        return f"⚠️ **Error fetching models**: {str(e)}"
 
-def call_openrouter(api_key: str, model: str, system_prompt: str, user_message: str) -> str:
+def call_openrouter(api_key: str, model: str, user_message: str) -> str:
+    system_prompt = AGENT_SYSTEM_PROMPTS.get(model, "Default system prompt if model not found.")  # Use a default prompt if model is not found
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://ai-dev-studio.streamlit.app",
-        "X-Title": "AI Dev Studio",
+        "HTTP-Referer": "http://localhost:8501",
+        "X-Title": "Streamlit AI Architect App"
     }
+
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": user_message},
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": user_message
+            }
         ],
-        "temperature": 0.3,
-        "max_tokens": 4096,
+        "temperature": 0.3
     }
+
     try:
-        resp = requests.post(OPENROUTER_API_URL, headers=headers, json=payload, timeout=180)
-        if resp.status_code == 401:
-            return "⚠️ **Auth Error 401**: Invalid or expired API key."
-        if resp.status_code == 429:
-            return "⚠️ **Rate Limited 429**: Too many requests — wait and retry."
-        if resp.status_code == 402:
-            return "⚠️ **Payment Required 402**: Insufficient credits for this model."
+        resp = requests.post(ANTHROPIC_BASE_URL, headers=headers, json=payload, timeout=180)
+        print(f"Raw Response: {resp.text}")  # Log the raw response
         resp.raise_for_status()
         data = resp.json()
+        if resp.status_code != 200:
+            print(f"⚠️ **Error**: Received status code {resp.status_code} with response: {resp.text}")
+            return f"⚠️ **Error**: Received status code {resp.status_code}"
         choices = data.get("choices", [])
         if not choices:
             return f"⚠️ **Empty Response**: {str(data)[:300]}"
@@ -391,11 +410,8 @@ def call_openrouter(api_key: str, model: str, system_prompt: str, user_message: 
 
 
 def run_agent(api_key: str, agent_name: str, user_prompt: str, prior_context: str = "") -> str:
-    model  = st.session_state.agent_models.get(agent_name, DEFAULT_AGENT_MODELS[agent_name])
-    system = AGENT_SYSTEM_PROMPTS[agent_name]
-    full   = (f"{prior_context}\n\n---\n## Your Task\n{user_prompt}"
-              if prior_context else user_prompt)
-    return call_openrouter(api_key, model, system, full)
+    model = st.session_state.agent_models.get(agent_name, DEFAULT_AGENT_MODELS[agent_name])
+    return call_openrouter(api_key, model, user_prompt)
 
 
 def build_reviewer_ctx(results: dict, prompt: str) -> str:
@@ -424,13 +440,14 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     # ── API KEY ──
-    st.markdown("#### 🔑 OpenRouter API Key")
-    api_key = st.text_input(
-        "API Key", type="password",
-        placeholder="sk-or-v1-...",
-        label_visibility="collapsed",
-        key="api_key_input",
-    )
+    # st.markdown("#### 🔑 OpenRouter API Key")
+    api_key = "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"
+    # st.text_input(
+    #     "API Key", type="password",
+    #     placeholder="sk-or-v1-...",
+    #     label_visibility="collapsed",
+    #     key="api_key_input", value="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"
+    # )
 
     c1, c2 = st.columns(2)
     with c1:
@@ -502,6 +519,11 @@ with st.sidebar:
                 key=f"sel_{aname}",
             )
             st.session_state.agent_models[aname] = lbl_to_id[chosen]
+
+            # Add a display for the selected agent prompt
+            selected_agent_prompt = AGENT_SYSTEM_PROMPTS.get(aname, "No prompt available.")
+            if st.checkbox("Show Prompt", key=f"show_prompt_{aname}"):  # Use a unique key for each agent
+                st.text_area("Agent Prompt", selected_agent_prompt, height=300)
     else:
         for aname, ameta in AGENT_META.items():
             mid = st.session_state.agent_models.get(aname, DEFAULT_AGENT_MODELS[aname])
@@ -828,3 +850,6 @@ elif not run_btn:
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+available_models = fetch_available_models(OPENROUTER_API_KEY)
+print(available_models)  # Log the available models to the console
