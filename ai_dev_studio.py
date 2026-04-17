@@ -17,7 +17,7 @@ OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 OPENROUTER_AUTH_URL   = "https://openrouter.ai/api/v1/auth/key"
 ANTHROPIC_BASE_URL    = "https://openrouter.ai/api/v1/chat/completions"
 
-api_key_secrectpass = st.secrets["or_api_key"]
+api_key_secrectpass = st.secrets["OPENROUTER_API_KEY"]
 os.environ["API_KEY"] = api_key_secrectpass
 st.warning(api_key_secrectpass)
 OPENROUTER_API_KEY    = api_key_secrectpass
