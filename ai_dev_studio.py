@@ -661,7 +661,7 @@ if run_btn:
             short    = model_id.split("/")[-1]
 
             st.session_state.pipeline_status[aname] = "running"
-            pct = int((step / max(total, 1)) * 92)
+            pct = min(max(int((step / max(total, 1)) * 92), 0), 100)
             prog.progress(pct, text=f"{ameta['icon']} {aname} → {short}…")
             stat_ph.info(f"{ameta['icon']} **{aname}** running on `{short}`…")
 
